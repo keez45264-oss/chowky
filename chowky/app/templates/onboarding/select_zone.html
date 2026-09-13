@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Pick your zone — Chowky{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h2 class="mb-2">Which part of {{ city['name'] }}?</h2>
+        <p class="text-muted mb-4">Pick the zone closest to you.</p>
+        <form method="post">
+            <div class="list-group mb-4">
+                {% for zone in zones %}
+                <label class="list-group-item d-flex align-items-center gap-2">
+                    <input class="form-check-input mt-0" type="radio" name="zone_id" value="{{ zone['id'] }}" required>
+                    <span>{{ zone['name'] }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Enter my zone</button>
+        </form>
+        <a href="{{ url_for('onboarding.select_city') }}" class="d-block text-center mt-3">&larr; choose a different city</a>
+    </div>
+</div>
+{% endblock %}

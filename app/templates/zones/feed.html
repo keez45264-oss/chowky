@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ zone['zone_name'] }} — Chowky{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="mb-0">{{ zone['zone_name'] }}</h2>
+                <small class="text-muted">{{ zone['city_name'] }}</small>
+            </div>
+            <div class="btn-group btn-group-sm" role="group">
+                <a href="{{ url_for('zones.feed', zone_id=zone['id'], sort='recent') }}"
+                   class="btn btn-outline-secondary {% if sort == 'recent' %}active{% endif %}">Recent</a>
+                <a href="{{ url_for('zones.feed', zone_id=zone['id'], sort='trending') }}"
+                   class="btn btn-outline-secondary {% if sort == 'trending' %}active{% endif %}">Trending</a>
+            </div>
+        </div>
+
+        <!-- Composer -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('posts.new_post') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="zone_id" value="{{ zone['id'] }}">
+                    <textarea name="content" class="form-control mb-2" rows="3"
+                              placeholder="What's happening in {{ zone['zone_name'] }}?" required></textarea>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <select name="tag" class="form-select form-select-sm">
+                                <option value="">No tag</option>
+                                <option value="news">News</option>
+                                <option value="confession">Confession</option>
+                                <option value="question">Question</option>
+                                <option value="event">Event</option>
+                                <option value="chitchat">Chitchat</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <input type="file" name="image" class="form-control form-control-sm" accept="image/*">
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_anonymous" id="anonToggle">
+                        <label class="form-check-label" for="anonToggle">Post anonymously</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Post</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Feed -->
+        {% if posts|length == 0 %}
+            <p class="text-muted text-center">No posts yet in {{ zone['zone_name'] }} — be the first!</p>
+        {% endif %}
+
+        {% for post in posts %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-1">
+                    <strong>{{ 'Anonymous' if post['is_anonymous'] else post['pseudonym'] }}</strong>
+                    {% if post['tag'] %}
+                        <span class="badge bg-secondary text-capitalize">{{ post['tag'] }}</span>
+                    {% endif %}
+                </div>
+                <p class="card-text">{{ post['content'] }}</p>
+                {% if post['image_url'] %}
+                    <img src="{{ url_for('static', filename=post['image_url']) }}" class="img-fluid rounded mb-2" alt="Post image">
+                {% endif %}
+                <small class="text-muted">{{ post['like_count'] }} likes &middot; {{ post['created_at'] }}</small>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
