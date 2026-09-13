@@ -1,4 +1,4 @@
-from flask import abort, render_template, request
+from flask import abort, render_template, request, session
 
 from app.auth.routes import login_required
 from app.db import get_db, placeholder
@@ -32,6 +32,26 @@ def feed(zone_id):
         f"ORDER BY {order_by}",
         (zone_id, 0),
     )
-    posts = cur.fetchall()
+    raw_posts = cur.fetchall()
+
+    posts = []
+    for post in raw_posts:
+        post = dict(post)
+
+        cur.execute(
+            f"SELECT id FROM likes WHERE post_id = {ph} AND user_id = {ph}",
+            (post["id"], session["user_id"]),
+        )
+        post["user_liked"] = cur.fetchone() is not None
+
+        cur.execute(
+            f"SELECT c.content, c.created_at, u.pseudonym "
+            f"FROM comments c JOIN users u ON c.author_id = u.id "
+            f"WHERE c.post_id = {ph} ORDER BY c.created_at ASC",
+            (post["id"],),
+        )
+        post["comments"] = cur.fetchall()
+
+        posts.append(post)
 
     return render_template("zones/feed.html", zone=zone, posts=posts, sort=sort)

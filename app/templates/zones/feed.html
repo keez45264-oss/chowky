@@ -68,7 +68,36 @@
                 {% if post['image_url'] %}
                     <img src="{{ url_for('static', filename=post['image_url']) }}" class="img-fluid rounded mb-2" alt="Post image">
                 {% endif %}
-                <small class="text-muted">{{ post['like_count'] }} likes &middot; {{ post['created_at'] }}</small>
+                <small class="text-muted">{{ post['created_at'] }}</small>
+
+                <div class="d-flex align-items-center gap-2 mt-2 mb-2">
+                    <form method="post" action="{{ url_for('posts.toggle_like', post_id=post['id']) }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm {% if post['user_liked'] %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                            {% if post['user_liked'] %}&#9829;{% else %}&#9825;{% endif %} {{ post['like_count'] }}
+                        </button>
+                    </form>
+
+                    <form method="post" action="{{ url_for('posts.report_post', post_id=post['id']) }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Report this post?');">Report</button>
+                    </form>
+                </div>
+
+                {% if post['comments']|length > 0 %}
+                <div class="border-top pt-2 mb-2">
+                    {% for comment in post['comments'] %}
+                    <div class="mb-1">
+                        <strong class="small">{{ comment['pseudonym'] }}</strong>
+                        <span class="small">{{ comment['content'] }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="post" action="{{ url_for('posts.add_comment', post_id=post['id']) }}" class="d-flex gap-2">
+                    <input type="text" name="content" class="form-control form-control-sm" placeholder="Add a comment..." required>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Reply</button>
+                </form>
             </div>
         </div>
         {% endfor %}

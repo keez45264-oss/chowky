@@ -74,3 +74,109 @@ def new_post():
     db.commit()
 
     return redirect(url_for("zones.feed", zone_id=zone_id))
+
+
+def _redirect_back(zone_id):
+    """Redirect to the referring page if we have one, else the zone feed."""
+    return redirect(request.referrer or url_for("zones.feed", zone_id=zone_id))
+
+
+@posts_bp.route("/<int:post_id>/like", methods=["POST"])
+@login_required
+def toggle_like(post_id):
+    db = get_db()
+    ph = placeholder()
+    cur = db.cursor()
+
+    cur.execute(f"SELECT zone_id FROM posts WHERE id = {ph}", (post_id,))
+    post = cur.fetchone()
+    if post is None:
+        flash("That post no longer exists.")
+        return redirect(url_for("home"))
+
+    cur.execute(
+        f"SELECT id FROM likes WHERE post_id = {ph} AND user_id = {ph}",
+        (post_id, session["user_id"]),
+    )
+    existing = cur.fetchone()
+
+    if existing:
+        cur.execute(f"DELETE FROM likes WHERE id = {ph}", (existing["id"],))
+        cur.execute(f"UPDATE posts SET like_count = like_count - 1 WHERE id = {ph}", (post_id,))
+    else:
+        cur.execute(
+            f"INSERT INTO likes (post_id, user_id) VALUES ({ph}, {ph})",
+            (post_id, session["user_id"]),
+        )
+        cur.execute(f"UPDATE posts SET like_count = like_count + 1 WHERE id = {ph}", (post_id,))
+
+    db.commit()
+    return _redirect_back(post["zone_id"])
+
+
+@posts_bp.route("/<int:post_id>/comment", methods=["POST"])
+@login_required
+def add_comment(post_id):
+    db = get_db()
+    ph = placeholder()
+    cur = db.cursor()
+
+    cur.execute(f"SELECT zone_id FROM posts WHERE id = {ph}", (post_id,))
+    post = cur.fetchone()
+    if post is None:
+        flash("That post no longer exists.")
+        return redirect(url_for("home"))
+
+    content = request.form.get("content", "").strip()
+    if not content:
+        flash("Comment can't be empty.")
+        return _redirect_back(post["zone_id"])
+
+    cur.execute(
+        f"INSERT INTO comments (post_id, author_id, content) VALUES ({ph}, {ph}, {ph})",
+        (post_id, session["user_id"], content),
+    )
+    db.commit()
+    return _redirect_back(post["zone_id"])
+
+
+@posts_bp.route("/<int:post_id>/report", methods=["POST"])
+@login_required
+def report_post(post_id):
+    db = get_db()
+    ph = placeholder()
+    cur = db.cursor()
+
+    cur.execute(f"SELECT zone_id FROM posts WHERE id = {ph}", (post_id,))
+    post = cur.fetchone()
+    if post is None:
+        flash("That post no longer exists.")
+        return redirect(url_for("home"))
+
+    reason = request.form.get("reason", "").strip() or None
+
+    cur.execute(
+        f"SELECT id FROM reports WHERE post_id = {ph} AND reporter_id = {ph}",
+        (post_id, session["user_id"]),
+    )
+    if cur.fetchone():
+        flash("You've already reported this post.")
+        return _redirect_back(post["zone_id"])
+
+    cur.execute(
+        f"INSERT INTO reports (post_id, reporter_id, reason) VALUES ({ph}, {ph}, {ph})",
+        (post_id, session["user_id"], reason),
+    )
+    cur.execute(f"UPDATE posts SET report_count = report_count + 1 WHERE id = {ph}", (post_id,))
+
+    threshold = current_app.config["REPORT_HIDE_THRESHOLD"]
+    cur.execute(f"SELECT report_count FROM posts WHERE id = {ph}", (post_id,))
+    updated = cur.fetchone()
+    if updated["report_count"] >= threshold:
+        cur.execute(f"UPDATE posts SET is_hidden = {ph} WHERE id = {ph}", (1, post_id))
+        flash("Post reported. It's been hidden pending review.")
+    else:
+        flash("Post reported. Thanks for helping keep this zone trustworthy.")
+
+    db.commit()
+    return _redirect_back(post["zone_id"])
