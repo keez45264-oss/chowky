@@ -1,6 +1,7 @@
 from flask import Flask
 
 from app import db
+from app.admin import admin_bp
 from app.auth import auth_bp
 from app.onboarding import onboarding_bp
 from app.posts import posts_bp
@@ -19,10 +20,7 @@ def create_app(config_class):
     app.register_blueprint(posts_bp, url_prefix="/post")
     app.register_blueprint(zones_bp, url_prefix="/zone")
     app.register_blueprint(tribes_bp, url_prefix="/tribe")
-
-    # Blueprints below will be added as we build them out:
-    # from app.admin import admin_bp
-    # app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
 
     @app.route("/")
     def home():

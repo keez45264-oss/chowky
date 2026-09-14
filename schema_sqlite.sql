@@ -26,6 +26,7 @@ CREATE TABLE users (
     home_zone_id INTEGER REFERENCES zones(id) ON DELETE SET NULL,
     current_zone_id INTEGER REFERENCES zones(id) ON DELETE SET NULL,
     is_banned INTEGER DEFAULT 0,
+    is_admin INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

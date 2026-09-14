@@ -12,6 +12,9 @@
         <a class="navbar-brand" href="{{ url_for('home') }}">Chowky</a>
         {% if session.get('user_id') %}
             <a class="btn btn-outline-light btn-sm me-2" href="{{ url_for('tribes.list_tribes') }}">Tribes</a>
+            {% if session.get('is_admin') %}
+                <a class="btn btn-outline-warning btn-sm me-2" href="{{ url_for('admin.dashboard') }}">Admin</a>
+            {% endif %}
             <span class="text-light me-3">Hi, {{ session.get('pseudonym') }}</span>
             <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.logout') }}">Logout</a>
         {% endif %}

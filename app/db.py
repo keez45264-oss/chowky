@@ -28,6 +28,7 @@ def get_db():
         else:
             g.db = sqlite3.connect(SQLITE_PATH)
             g.db.row_factory = sqlite3.Row
+            g.db.execute("PRAGMA foreign_keys = ON")
             g.db_is_postgres = False
     return g.db
 

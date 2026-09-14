@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Moderation — Chowky{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2 class="mb-1">Moderation Queue</h2>
+        <p class="text-muted mb-4">Posts auto-hidden after crossing the report threshold.</p>
+
+        {% if posts|length == 0 %}
+            <p class="text-muted text-center">Nothing pending review right now.</p>
+        {% endif %}
+
+        {% for post in posts %}
+        <div class="card mb-3 border-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-1">
+                    <strong>
+                        {{ 'Anonymous' if post['is_anonymous'] else post['pseudonym'] }}
+                        <small class="text-muted">({{ post['email'] }})</small>
+                    </strong>
+                    <span class="badge bg-danger">{{ post['report_count'] }} reports</span>
+                </div>
+
+                <small class="text-muted d-block mb-2">
+                    {% if post['zone_name'] %}Zone: {{ post['zone_name'] }}{% endif %}
+                    {% if post['tribe_name'] %}Tribe: {{ post['tribe_name'] }}{% endif %}
+                    &middot; {{ post['created_at'] }}
+                    {% if post['tag'] %}&middot; <span class="text-capitalize">{{ post['tag'] }}</span>{% endif %}
+                </small>
+
+                <p class="card-text">{{ post['content'] }}</p>
+                {% if post['image_url'] %}
+                    <img src="{{ url_for('static', filename=post['image_url']) }}" class="img-fluid rounded mb-2" style="max-height: 250px;" alt="Post image">
+                {% endif %}
+
+                {% if post['reports']|length > 0 %}
+                <div class="border-top pt-2 mt-2 mb-3">
+                    <small class="text-muted fw-bold">Report reasons:</small>
+                    <ul class="small text-muted mb-0">
+                        {% for report in post['reports'] %}
+                        <li>{{ report['reason'] or 'No reason given' }} — {{ report['created_at'] }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <div class="d-flex gap-2">
+                    <form method="post" action="{{ url_for('admin.restore_post', post_id=post['id']) }}">
+                        <button type="submit" class="btn btn-sm btn-outline-success">Restore</button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin.remove_post', post_id=post['id']) }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Permanently remove this post? This cannot be undone.');">
+                            Remove permanently
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

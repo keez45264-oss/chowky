@@ -87,6 +87,7 @@ def login():
             session.clear()
             session["user_id"] = user["id"]
             session["pseudonym"] = user["pseudonym"]
+            session["is_admin"] = bool(user["is_admin"])
             return redirect(url_for("home"))
 
         flash(error)
