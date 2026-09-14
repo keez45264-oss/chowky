@@ -17,8 +17,6 @@ def _allowed_file(filename):
 
 
 def _save_image(file_storage):
-    """Saves an uploaded image with a random filename, returns the relative
-    path to store in the DB, or None if no valid file was given."""
     if not file_storage or file_storage.filename == "":
         return None
     if not _allowed_file(file_storage.filename):
@@ -45,7 +43,8 @@ def new_post():
     content = request.form.get("content", "").strip()
     tag = request.form.get("tag") or None
     is_anonymous = 1 if request.form.get("is_anonymous") else 0
-    zone_id = request.form.get("zone_id")
+    zone_id = request.form.get("zone_id") or None
+    tribe_id = request.form.get("tribe_id") or None
 
     if tag and tag not in VALID_TAGS:
         tag = None
@@ -54,31 +53,40 @@ def new_post():
         flash("Your post can't be empty.")
         return redirect(request.referrer or url_for("home"))
 
-    if not zone_id:
-        flash("Something went wrong — no zone selected for this post.")
+    if not zone_id and not tribe_id:
+        flash("Something went wrong — no zone or tribe selected for this post.")
         return redirect(request.referrer or url_for("home"))
 
-    # Confirm the zone is real before posting to it
-    cur.execute(f"SELECT id FROM zones WHERE id = {ph}", (zone_id,))
-    if cur.fetchone() is None:
-        flash("That zone doesn't exist.")
-        return redirect(url_for("home"))
+    if zone_id:
+        cur.execute(f"SELECT id FROM zones WHERE id = {ph}", (zone_id,))
+        if cur.fetchone() is None:
+            flash("That zone doesn't exist.")
+            return redirect(url_for("home"))
+
+    if tribe_id:
+        cur.execute(f"SELECT id FROM tribes WHERE id = {ph}", (tribe_id,))
+        if cur.fetchone() is None:
+            flash("That tribe doesn't exist.")
+            return redirect(url_for("home"))
 
     image_url = _save_image(request.files.get("image"))
 
     cur.execute(
-        f"INSERT INTO posts (author_id, zone_id, content, image_url, tag, is_anonymous) "
-        f"VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph})",
-        (session["user_id"], zone_id, content, image_url, tag, is_anonymous),
+        f"INSERT INTO posts (author_id, zone_id, tribe_id, content, image_url, tag, is_anonymous) "
+        f"VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})",
+        (session["user_id"], zone_id, tribe_id, content, image_url, tag, is_anonymous),
     )
     db.commit()
 
+    if tribe_id:
+        return redirect(url_for("tribes.feed", tribe_id=tribe_id))
     return redirect(url_for("zones.feed", zone_id=zone_id))
 
 
-def _redirect_back(zone_id):
-    """Redirect to the referring page if we have one, else the zone feed."""
-    return redirect(request.referrer or url_for("zones.feed", zone_id=zone_id))
+def _redirect_to_post_home(post):
+    if post.get("tribe_id"):
+        return redirect(url_for("tribes.feed", tribe_id=post["tribe_id"]))
+    return redirect(url_for("zones.feed", zone_id=post["zone_id"]))
 
 
 @posts_bp.route("/<int:post_id>/like", methods=["POST"])
@@ -88,11 +96,12 @@ def toggle_like(post_id):
     ph = placeholder()
     cur = db.cursor()
 
-    cur.execute(f"SELECT zone_id FROM posts WHERE id = {ph}", (post_id,))
+    cur.execute(f"SELECT zone_id, tribe_id FROM posts WHERE id = {ph}", (post_id,))
     post = cur.fetchone()
     if post is None:
         flash("That post no longer exists.")
         return redirect(url_for("home"))
+    post = dict(post)
 
     cur.execute(
         f"SELECT id FROM likes WHERE post_id = {ph} AND user_id = {ph}",
@@ -111,7 +120,7 @@ def toggle_like(post_id):
         cur.execute(f"UPDATE posts SET like_count = like_count + 1 WHERE id = {ph}", (post_id,))
 
     db.commit()
-    return _redirect_back(post["zone_id"])
+    return _redirect_to_post_home(post)
 
 
 @posts_bp.route("/<int:post_id>/comment", methods=["POST"])
@@ -121,23 +130,24 @@ def add_comment(post_id):
     ph = placeholder()
     cur = db.cursor()
 
-    cur.execute(f"SELECT zone_id FROM posts WHERE id = {ph}", (post_id,))
+    cur.execute(f"SELECT zone_id, tribe_id FROM posts WHERE id = {ph}", (post_id,))
     post = cur.fetchone()
     if post is None:
         flash("That post no longer exists.")
         return redirect(url_for("home"))
+    post = dict(post)
 
     content = request.form.get("content", "").strip()
     if not content:
         flash("Comment can't be empty.")
-        return _redirect_back(post["zone_id"])
+        return _redirect_to_post_home(post)
 
     cur.execute(
         f"INSERT INTO comments (post_id, author_id, content) VALUES ({ph}, {ph}, {ph})",
         (post_id, session["user_id"], content),
     )
     db.commit()
-    return _redirect_back(post["zone_id"])
+    return _redirect_to_post_home(post)
 
 
 @posts_bp.route("/<int:post_id>/report", methods=["POST"])
@@ -147,11 +157,12 @@ def report_post(post_id):
     ph = placeholder()
     cur = db.cursor()
 
-    cur.execute(f"SELECT zone_id FROM posts WHERE id = {ph}", (post_id,))
+    cur.execute(f"SELECT zone_id, tribe_id FROM posts WHERE id = {ph}", (post_id,))
     post = cur.fetchone()
     if post is None:
         flash("That post no longer exists.")
         return redirect(url_for("home"))
+    post = dict(post)
 
     reason = request.form.get("reason", "").strip() or None
 
@@ -161,7 +172,7 @@ def report_post(post_id):
     )
     if cur.fetchone():
         flash("You've already reported this post.")
-        return _redirect_back(post["zone_id"])
+        return _redirect_to_post_home(post)
 
     cur.execute(
         f"INSERT INTO reports (post_id, reporter_id, reason) VALUES ({ph}, {ph}, {ph})",
@@ -179,4 +190,4 @@ def report_post(post_id):
         flash("Post reported. Thanks for helping keep this zone trustworthy.")
 
     db.commit()
-    return _redirect_back(post["zone_id"])
+    return _redirect_to_post_home(post)
